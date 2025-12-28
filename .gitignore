@@ -1,0 +1,6 @@
+# ========================
+# Environment files
+# ========================
+Frontend/TaskCalender/.env
+Backend/.env
+.env
