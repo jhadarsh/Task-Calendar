@@ -21,30 +21,38 @@ export const apiRequest = async (url, method = "GET", body) => {
       localStorage.removeItem("token");
     }
 
-    const data = await res.json();
+    // ✅ SAFE RESPONSE PARSING
+    const contentType = res.headers.get("content-type");
+    let data;
+
+    if (contentType && contentType.includes("application/json")) {
+      data = await res.json();
+    } else {
+      const text = await res.text();
+      data = { message: text || "Request failed" };
+    }
 
     if (!res.ok) {
-      // Create a proper error object with response data
       const error = new Error(data.message || "API Error");
       error.response = {
         status: res.status,
-        data: data,
+        data,
       };
       throw error;
     }
 
     return data;
   } catch (err) {
-    // If it's already our custom error, just throw it
+    // Preserve structured errors
     if (err.response) {
       throw err;
     }
-    
-    // Network error or JSON parse error
+
+    // Network / parsing error
     const error = new Error(err.message || "Network error");
     error.response = {
       status: 0,
-      data: { message: err.message },
+      data: { message: error.message },
     };
     throw error;
   }

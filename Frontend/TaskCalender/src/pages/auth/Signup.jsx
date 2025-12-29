@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   User,
@@ -36,7 +36,9 @@ const Notification = ({ message, type, onClose }) => {
     >
       {icons[type]}
       <p className="text-xs font-medium flex-1">{message}</p>
-      <button onClick={onClose} className="text-base leading-none">×</button>
+      <button onClick={onClose} className="text-base leading-none">
+        ×
+      </button>
     </motion.div>
   );
 };
@@ -59,6 +61,11 @@ export default function Signup() {
   const [notification, setNotification] = useState(null);
 
   const timerRef = useRef(null);
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
 
   const showNotification = (message, type = "error") => {
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -72,22 +79,27 @@ export default function Signup() {
   const handleSubmit = async () => {
     const { name, email, password } = form;
 
-    // Validation
     if (!name || !email || !password) {
       showNotification("All required fields must be filled.");
       return;
     }
 
-    // Email validation
+    const nameRegex = /^[a-zA-Z ]{3,}$/;
+    if (!nameRegex.test(name)) {
+      showNotification(
+        "Name must be at least 3 characters and contain only letters."
+      );
+      return;
+    }
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       showNotification("Please enter a valid email address.");
       return;
     }
 
-    // Password length validation
-    if (password.length < 6) {
-      showNotification("Password must be at least 6 characters.");
+    if (password.length < 8) {
+      showNotification("Password must be at least 8 characters.");
       return;
     }
 
@@ -95,35 +107,43 @@ export default function Signup() {
 
     try {
       const res = await signup(form);
-      
-      // Show success message with admin verification info
-      const successMsg = res.message || "Signup successful! Please contact admin for verification.";
-      showNotification(successMsg, "success");
 
-      // Navigate after showing the message
-      setTimeout(() => {
+      showNotification(
+        "Signup successful! Please contact the administrator for account verification. You will be redirected to the login page in 8 seconds." ||
+          res?.message,
+        "success"
+      );
+
+      setIsSubmitting(false);
+
+      timerRef.current = setTimeout(() => {
         navigate("/", { replace: true });
-      }, 2500); // Longer delay so user can read the message
-      
+      }, 8000);
     } catch (err) {
-      console.error("Signup error:", err);
-      
-      // Extract message from backend response
       let errorMessage = "Signup failed. Please try again.";
-      
-      if (err.response && err.response.data && err.response.data.message) {
-        // Use the exact message from backend
-        errorMessage = err.response.data.message;
-      } else if (err.response) {
-        if (err.response.status === 409) {
-          errorMessage = "Email already exists. Please use a different email.";
-        } else if (err.response.status === 400) {
-          errorMessage = "Invalid data provided. Please check your inputs.";
+
+      if (err.response) {
+        const { status, data } = err.response;
+        const backendMsg = data?.message;
+
+        if (
+          backendMsg &&
+          backendMsg !== "Unauthorized" &&
+          backendMsg !== "Bad Request"
+        ) {
+          errorMessage = backendMsg;
+        } else {
+          if (status === 409) {
+            errorMessage =
+              "Email already exists. Please use a different email.";
+          } else if (status === 400) {
+            errorMessage = "Invalid signup data. Please check all fields.";
+          } else if (status === 500) {
+            errorMessage = "Server error. Please try again later.";
+          }
         }
-      } else if (err.message) {
-        errorMessage = err.message;
       }
-      
+
       showNotification(errorMessage, "error");
       setIsSubmitting(false);
     }
@@ -179,17 +199,19 @@ export default function Signup() {
 
         {/* Password */}
         <div className="mb-2.5">
-          <label className="text-xs font-medium text-gray-700 block mb-1">Password</label>
+          <label className="text-xs font-medium text-gray-700 block mb-1">
+            Password
+          </label>
           <div className="relative">
             <Lock className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type={showPassword ? "text" : "password"}
               className="w-full pl-9 pr-9 py-2 text-xs border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
               value={form.password}
-              onChange={(e) =>
-                setForm({ ...form, password: e.target.value })
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
+              onKeyDown={(e) =>
+                e.key === "Enter" && !isSubmitting && handleSubmit()
               }
-              onKeyDown={(e) => e.key === "Enter" && !isSubmitting && handleSubmit()}
               disabled={isSubmitting}
             />
             <button
@@ -198,7 +220,11 @@ export default function Signup() {
               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400"
               disabled={isSubmitting}
             >
-              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              {showPassword ? (
+                <EyeOff className="w-4 h-4" />
+              ) : (
+                <Eye className="w-4 h-4" />
+              )}
             </button>
           </div>
         </div>
@@ -237,10 +263,20 @@ export default function Signup() {
 
 /* ---------------- Reusable Input ---------------- */
 
-function Input({ label, value, onChange, icon, onEnter, type = "text", disabled = false }) {
+function Input({
+  label,
+  value,
+  onChange,
+  icon,
+  onEnter,
+  type = "text",
+  disabled = false,
+}) {
   return (
     <div className="mb-2.5">
-      <label className="text-xs font-medium text-gray-700 block mb-1">{label}</label>
+      <label className="text-xs font-medium text-gray-700 block mb-1">
+        {label}
+      </label>
       <div className="relative">
         <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400">
           {icon}

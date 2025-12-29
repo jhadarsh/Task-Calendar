@@ -11,9 +11,7 @@ useEffect(() => {
     try {
       const res = await apiRequest("/tasks/available-dates");
 
-      console.log("RAW API RESPONSE:", res);
-      console.log("FREE DAYS FROM BACKEND:", res.freeDays);
-      console.log("LIGHT DAYS FROM BACKEND:", res.lightDays);
+     
 
       const mapDate = (d) => {
         const dateObj = new Date(d.key + "T00:00:00");

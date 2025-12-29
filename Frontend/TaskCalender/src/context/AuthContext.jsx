@@ -32,40 +32,29 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   /* ---------- SIGNUP ---------- */
-  const signup = async (form) => {
-    setLoading(true);
-    try {
-      const payload = {
-        name: form.name,
-        email: form.email,
-        password: form.password,
-        goals: form.goals
-          ? form.goals.split(",").map((g) => g.trim())
-          : [],
-      };
-
-      // 🚫 NO TOKEN, NO AUTO LOGIN
-      const res = await apiRequest("/auth/signup", "POST", payload);
-      return res;
-    } finally {
-      setLoading(false);
-    }
+ const signup = async (form) => {
+  const payload = {
+    name: form.name,
+    email: form.email,
+    password: form.password,
+    goals: form.goals
+      ? form.goals.split(",").map((g) => g.trim())
+      : [],
   };
+
+  const res = await apiRequest("/auth/signup", "POST", payload);
+  return res;
+};
+
 
   /* ---------- LOGIN ---------- */
-  const login = async (form) => {
-    setLoading(true);
-    try {
-      const res = await apiRequest("/auth/login", "POST", form);
+const login = async (form) => {
+  const res = await apiRequest("/auth/login", "POST", form);
+  localStorage.setItem("token", res.token);
+  setUser(res.user);             // ✅ triggers re-render
+  return res;
+};
 
-      // ✅ ONLY VERIFIED USERS GET TOKEN
-      localStorage.setItem("token", res.token);
-      setUser(res.user);
-      return res;
-    } finally {
-      setLoading(false);
-    }
-  };
 
   /* ---------- LOGOUT ---------- */
   const logout = () => {
